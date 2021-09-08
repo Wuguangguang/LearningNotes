@@ -357,18 +357,6 @@
 
 > 一种嵌入在Activity中的UI片段，主要用于兼顾平板与手机不同屏幕尺寸的自适应性，也可用于减轻Activity，提高加载效率。
 
-#### 消息机制
-
-1. 相关名词
-
-   1. UI线程：即主线程，系统创建UI线程时会初始化一个`Looper`对象，同时创建与之关联的`MessageQueue`
-   2. Handler：发送与处理信息，当前线程必须有`Looper`对象才可正常工作
-   3. Message：Handler接受与处理的消息对象
-   4. MessageQueue：消息队列，FIFO管理Message，初始化`Looper`对象时会创建。
-   5. Looper：每个线程唯一，管理`MessageQueue`，不断从中取出Message分发给对应Handler处理
-
-   > 当子线程想修改Activity的UI组件时，新建一个Handler对象，通过该对象向主线程发送信息；信息Message先进入主线程MessageQueue进行等待，由Looper按序取出Message进行处理，根据Message的`what`属性分发给相应Handler。
-
 #### 事件分发机制
 
 1. 事件序列解析    `点击/滑动`
@@ -534,29 +522,11 @@ try{
 
 #### RxJava
 
-### 5.Jetpack框架
-
-#### ViewModel
-
-#### ViewBinding
-
-#### LiveData/LiveCycle
-
-### 6.项目架构
+### 5.项目架构
 
 #### MVC
 
 #### MVP
 
 #### MVVM
-
-### 7.获取控件方式变化
-
-#### findViewById
-
-#### ButterKnife
-
-#### Kotlin-Android-Extensions
-
-#### ViewBinding
 
