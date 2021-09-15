@@ -33,20 +33,57 @@
 2. 创建Activity的方式
 
    1. 自定义Activity类名，继承AppCompatActivity
+
    2. 重写onCreate()方法，调用setContentView()设置要显示的视图
+
    3. 在AndroidManifest.xml中注册并配置该Activity
-   4. 启动Activity，startActivity(intent)
+
+   4. 启动Activity
+
+      1. startActivity()
+
+         ``` java
+         // 显式启动
+         Intent intent1 = new Intent(MainActivity.this, SecondActivity.class);
+         startActivity(intent1);
+         // 隐式启动
+         Intent intent2 = new Intent();
+         intent2.setAction("actionStr");
+         intent2.setCategory("categoryStr");
+         startActivity(intent2);
+         <activity android:name=".SecondActivity">	// manifest.xml
+             <intent-filter>
+             	<!-- 只能设置一个action，可设置多个category，只有action&category同时匹配时可响应Intent -->
+             	<action android:name="actionStr" />
+                 <category android:name="categoryStr" />
+             </intent-filter>
+         </activity>
+         ```
+
+      2. startActivityForResult(Intent intent, int requestCode, Bundle options)
+
+         以指定的请求码requestCode启动Activity，新Activity结束后根据requestCode回调到旧Activity的`onActivityResult()`获取并处理返回结果
+
+      3. startActivities(Intent[] intents, Bundle options)
+
+         先启动最后一个Activity，返回时依次创建并启动前一个Activity。如intent对应ABC，则启动顺序为CBA，应用场景：首页广告跳转，消息推送等
+
    5. 关闭Activity，调用finish()或手机返回键、home键
 
 3. 生命周期管理
 
-   > 运行状态、暂停状态、停止状态、销毁状态，根据回调方法划分为三个生存期：
+   > 四种状态：
    >
-   > **完整生存期** Activity在onCreate()和onDestroy()之间的生存期。
+   > - 运行状态 当前Activity位于前台，用户可见，可获得焦点
+   > - 暂停状态 其他Activity位于前台，该Activity可见但无法获得焦点
+   > - 停止状态 Activity不可见，失去焦点
+   > - 销毁状态 Activity结束，Task栈内清除
    >
-   > **可见生存期** Activity在onStart()和onStop()之间的生存期。
+   > 根据回调方法划分为三个生存期：
    >
-   > **前台生存期** Activity在onResume()和onPause()之间的生存期。
+   > - **完整生存期** Activity在onCreate()和onDestroy()之间的生存期。
+   > - **可见生存期** Activity在onStart()和onStop()之间的生存期。
+   > - **前台生存期** Activity在onResume()和onPause()之间的生存期。
 
    1. onCreate()    首次创建Activity时调用
    2. onStart()    在Activity即将对用户可见之前调用
@@ -100,9 +137,7 @@
 
 #### Service
 
-> 在后台运行的组件，用于执行长时间运行的操作或为远程进程执行作业，可不提供界面。Activity等其他组件可启动服务并使服务运行或绑定到该组件以便进行交互。
->
-> Service运行在主线程，在ANR机制中，Service响应时长不能超过20s，并不能进行耗时操作，可如果使用Thread异步处理，则可进行耗时操作。
+`Service`实现程序后台运行，适用于执行不需要与用户交互且要求长期运行的任务。其运行不依赖于任何用户界面。服务并非运行在独立进程中，而依赖于创建服务时所在的APP进程。Service运行在主线程，在ANR机制中，Service响应时长不能超过20s，并不能进行耗时操作，可如果使用Thread异步处理，则可进行耗时操作。
 
 1. 生命周期回调
 
@@ -114,11 +149,16 @@
 
    ![](D:\Users\80350694\Desktop\文档输出\res\20210830153913788.png)
 
-2. 生命周期管理
+2. Service类型
    
-   1. startService()    独立于Activity运行，保持一个单例，自行结束或被叫停
-   2. bindService()    绑定于Activity运行，Activity结束时会被叫停
-   3. 被启动又被绑定的Service，将一直在后台运行，保持单例，必须显式stop停止，unbind不会停止Service。
+   1. 前台服务	`startForegroundService()`，前台服务可一直保持运行状态，必须使用通知
+   2. 后台服务    优先级较低，内存不足易被杀死
+      - 不可交互后台服务`startService`    独立于Activity运行，保持一个单例，自行结束或被叫停；onCreate - onStartCommand - onDestroy
+      - 可交互后台服务`bindService`    绑定于Activity运行，Activity结束时会被叫停；onCreate - onBind - onUnbind - onDestroy
+      - 混合型服务`start|bind同时使用`    一直在后台运行，保持单例，必须显式stop停止，unbind不会停止Service；onCreate - onStartCommand - onBind - onUnbind - onDestroy
+   
+   3. AIDL跨进程服务    实现跨进程通信的服务
+   
    4. 调用`bindService`启动Service时应保证在某处会调用`unbindService`解绑；调用`startService`一定要保证`stopService`出现。
    
 3. 绑定Service
@@ -188,40 +228,83 @@
 
 #### BroadcastReceiver
 
-> 广播，应用程序间的全局喇叭，通信的手段，如发生电量低、插入耳机等事件系统发出广播，能响应该广播的程序将做相应动作。
->
-> 广播同样可引发ANR，耗时操作不允许超过10s，且广播内一般不会使用Thread完成耗时操作
->
-> 若需要网络、电池等服务就需要全局广播；若只需要应用内通信则只需要应用内广播
->
-> 应用内广播LocalBroadcast使用Handler的消息传输机制；全局广播Broadcast使用Binder机制
+广播，应用程序间的喇叭，通信的手段，如发生电量低、插入耳机等事件系统发出广播，能响应广播的程序将做相应动作。发送广播使用`Intent`，接收广播使用`BroadcastReceiver`。
 
-1. 注册广播
+> `onReceive`方法中不应添加过多逻辑或长时间耗时操作，耗时操作不允许超过10s，Receiver不允许开启线程，运行较长时APP报错
 
-   1. 动态注册    非常驻型，依赖注册组件的生命周期，注册/注销需要成对出现，灵活，但必须在程序启动后才能接收广播
+1. 广播分类
+
+   1. 标准广播
+
+      完全异步执行，广播发出后所有Receiver都在同一时刻接收到该消息，无法被截断。
+
+      ``` java
+      public class MyBroadcastReceiver extends BroadcastReceiver {
+          @Override
+          public void onReceiver(Context context, Intent intent) {
+              ...
+          }
+      }
+      // manifest.xml
+      <receiver android:name=".MyBroadcastReceiver"
+      	android:enabled="true"
+          android:exported="true">
+          <intent-filter>
+              <action android:name="com.example.broadcasttest.MY_BROADCAST" />
+          </intent-filter>
+      </receiver>
+      // onCreate
+      Intent intent = new Intent("com.example.broadcasttest.MY_BROADCAST");
+      sendBroadcast(intent);
+      ```
+
+   2. 有序广播
+
+      同步执行，广播发出后按照优先级排序顺序传递广播，可被截断或修改广播信息
+
+      ``` java
+      // manifest.xml
+      <receiver
+      	android:name=".MyBroadcastReceiver"
+          android:enabled="true"
+          android:exported="true">
+          <intent-filter android:priority="100">	// android:priority指定广播优先级
+              <action android:name="com.example.broadcasttest.MY_BROADCAST" />
+          </intent-filter>
+      </receiver>
+      sendOrderedBroadcast(intent)	// 发送有序广播
+      abortBroadcast()	// 终止广播向下发送，低优先级的Receiver将无法接收到该广播
+      setResultExtras(Bundle)	// 将处理结果存入Broadcast传给下一个接收者
+      ```
+
+2. 广播注册方式
+
+   1. 动态注册    非常驻型，依赖注册组件的生命周期，注册/注销需要成对出现，灵活、自由控制，但必须在APP启动后才能运行
+
+      新建一个类继承自`BroadcastReceiver`，并重写`onReceive`方法；在`onCreate/onDestory`中分别进行`register/unregister`操作
+
+      > 动态广播的生命周期较灵活，资源消耗少，响应速度快；动态广播生命周期与其注册处的Avtivity具体操作有关。
 
       ``` kotlin
       inner class TimeChangeReceiver() : BroadcastReceiver(){	// 继承BroadcastReceiver并重写onReceiver()
           override fun onReceive(context: Context?, intent: Intent?){
-              Toast.makeText(context,"Time has changed.",Toast.LENGTH_SHORT).show()
           }
       }
       lateinit var timeChangeReceiver : TimeChangeReceiver	//Receiver对象
-      override fun onCreate(savedInstanceState: Bundle?) {
-          super.onCreate(savedInstanceState)
-          setContentView(R.layout.activity_main)
-          val intentFileter = IntentFilter()	// 需要监听的广播对应的action
-          intentFileter.addAction("android.intent.action.TIME_TICK")
-          timeChangeReceiver = TimeChangeReceiver()	
-          registerReceiver(timeChangeReceiver,intentFileter)	//注册该广播接收器
-      }
-      override fun onDestroy() {
-          super.onDestroy()
-          unregisterReceiver(timeChangeReceiver)	//取消注册该广播接收器
-      }
+      // onCreate()
+      val intentFileter = IntentFilter()
+      intentFileter.addAction("android.intent.action.TIME_TICK")
+      timeChangeReceiver = TimeChangeReceiver()	
+      registerReceiver(timeChangeReceiver,intentFileter)	//注册该广播接收器
+      // onDestroy()
+      unregisterReceiver(timeChangeReceiver)	//取消注册该广播接收器
       ```
 
-   2. 静态注册    在AndroidManifest中注册，常驻型，程序关闭亦可激活广播，由于存在安全性、流畅性问题，8.0系统后，所有隐式广播都不允许使用静态注册方式接收(隐式广播：未具体指定发送给哪个应用程序的广播)
+   2. 静态注册    在Manifest.xml中注册，常驻型，程序关闭亦可激活广播，存在安全性、流畅性问题，8.0系统后，所有隐式广播都不允许使用静态注册方式接收 [隐式广播：未具体指定发送给哪个应用程序的广播]
+
+      **动态注册的优先级始终大于静态注册**
+
+      > 静态广播一直存在，消耗资源较大，耗电量大；若使用静态广播进行注册，则每接受一次信息就会被销毁，下一次需要重建
 
       ``` xml
       <receiver android:name=".MyBroadcastReceiver"
@@ -233,44 +316,88 @@
       </receiver>
       ```
 
-2. 发送广播
+3. 本地广播
 
-   1. 无序广播(标准广播)`sendBroadcast`   完全异步执行，广播发出后，所有注册了该广播的Receiver都会同时受到该广播信息，没有先后顺序，无法被截断，效率较高。
+   系统全局广播可以被其他APP获取，存在安全性隐患；若广播只在APP内使用，可使用本地广播。实现更高效（无需进程间通信）、无需担心其他APP能接受本APP广播的安全问题，本地广播无法静态注册
 
-      ``` java
-      Intent intent = new Intent("com.example.broadcastreceiver.test");
-      intent.setComponent(new ComponentName(getPackageName(), MyBroadcastReceiver.class.getName()));
-      sendBroadcast(intent, null);
-      ```
-
-   2. 有序广播`sendOrderedBroadcast`    同步执行，同一时刻只会有一个Receiver接收广播，串行接收，高优先级Receiver可以截断、二次处理广播，使低优先级Receiver无法收到该广播、收到处理过的信息。
-
-   3. 区别    静态广播：广播一直存在，消耗资源较大，耗电量大    动态广播：广播的生命周期较灵活，资源消耗少，响应速度快
-
-3. 生命周期
-
-   若使用静态广播进行注册，则每接受一次信息就会被销毁，下一次需要重建；动态广播则与其注册处的Avtivity具体操作有关。
-
-4. 应用内广播     LocalBroadcastManager
-
-   发送的广播只会在App内传播，不泄露给其他App，保障数据安全性；无法接收到其他App的广播；相较于全局广播效率更高
+   本地广播`LocalBroadcast`使用`Handler`的消息传输机制；全局广播`Broadcast`使用`Binder`机制
 
    ``` java
-   networkReceiver = new NetworkReceiver();	// 注册
-   localBroadcastManager = LocalBroadcastManager.getInstance(this); // 以单例模式进行创建
-   localBroadcastManager.registerReceiver(networkReceiver, new IntentFilter("需要去过滤的信息"));
-   localBroadcastManager.sendBroadcast(Intent);	// 发送消息
-   localBroadcastManager.unregisterReceiver(networkReceiver);	// 注销
+   private LocalReceiver localReceiver;
+   private LocalBroadcastManager localBroadcastManager;	// 本地广播管理器
+   // onCreate
+   localBroadcastManager = LocalBroadcastManager.getInstance(this);
+   Intent intent = new Intent("com.example.broadcasttest.LOCAL_BROADCAST");
+   localBroadcastManager.sendBroadcast(intent);	// 发送本地广播
+   intentFilter.addAction("com.example.broadcasttest.LOCAL_BROADCAST");
+   localBroadcastManager.registerReceiver(localReceiver, intentFilter);	// 注册本地广播接收器
+   // onDestroy
+   localBroadcastManager.unregisterReceiver(localReceiver);
    ```
-
 
 #### ContentProvider
 
+`ContentProvider`主要用于在不同应用程序间实现数据共享的功能，是**跨程序共享数据**的标准方式。可以选择性共享数据，保证隐私数据没有泄露风险。
+
+1. 使用现有`ContentProvider`读取和操作响应APP中的数据
+
+   1. ContentResolver的基本用法
+
+      APP想要访问Provider中共享的数据，需要借助`ContentResolver`类，使用`Context.getContentResolver`获取实例，提供CRUD方法对数据进行操作。
+
+   2. 内容URI标准格式写法
+
+      `content://com.example.app.provider/table1`，内容URI = authority + path，authority常使用APP包名，path表示APP中的数据表名，`ContentResolver`接受Uri对象作为参数，可以清楚表达操作某APP内某张表的意图。
+
+      `content://com.example.app.provider/table1/1`：期望访问com.example.app这个APP的table1表中id为1的数据
+
+      - `*`：匹配任意长度字符	`#`：匹配任意长度数字
+
+   ``` java
+   Uri uri = Uri.parse("content://com.example.app.provider/table1");
+   // query
+   Cursor cursor = getContentResolver().query(uri, projection, selection, selectionArgs, sortOrder);
+   // uri:指定某APP下某一张表 projection:指定查询的列名 selection:指定where的约束条件 selectionArgs:为selection提供具体值 sortOrder:指定排序方式
+   if(cursor != null) {
+       while(cursor.moveToNext()) {
+           String column1 = cursor.getString(cursor.getColumnIndex("column1"));
+           int column2 = cursor.getInt(cursor.getColumnIndex("column2"));
+       }
+       cursor.close();
+   }
+   // insert
+   ContentValues values = new ContentValues();
+   values.put("column1", "text");
+   values.put("column2", 1);
+   getContentResolver().insert(uri, values);
+   // update
+   ContentValues values = new ContentValues();
+   values.put("column1", "");
+   getContentResolver().update(uri, values, "column1 = ? and column2 = ?", new String[] {"text", "1"});
+   // delete
+   getContentResolver().delete(uri, "column2 = ?", new String[] {"1"});
+   ```
+
+2. 自定义`ContentProvider`给APP数据提供外部访问接口
+
+   ``` java
+   public class MyProvider extends ContentProvider {
+       public boolean onCreate()	// 初始化ContentProvider时调用，通常完成DB创建、升级等，返回true表示初始化成功
+   	public Cursor query()	// 从ContentProvider中查询数据，结果放在Cursor中返回
+       public Uri insert()	// 向ContentProvider中添加一条数据，返回一个用于表示该新记录的URI
+       public int update()	// 更新已有数据，返回本次更新受影响的数据行数
+       public int delete()	// 删除数据，返回被删除的数据行数
+      	public String getType()	// 根据传入的内容URI返回相应的MIME类型
+   }
+   ```
+
+3. UriMatches
+
 #### Intent
 
-> Intent是各组件交互的一种重要方式，不仅可以指明当前组件想执行的动作，也可以在不同组件间传递数据。
->
-> Activity、Service、BroadcastReceiver间的通信使用Intent
+在各组件间传递数据的信使，用于启动Activity|Service、发送广播等。代表执行某一动作的意图，需指定目标同时目标也需要设置相关属性保证能够响应，IntentFilter即各组件注册响应能力
+
+传递数据的载体，除了传递基本类型key-value外，通常将数据打包封装为Bundle对象发送，复杂数据类型序列化需要实现Parcelable
 
 1. Intent类型
 
@@ -305,9 +432,13 @@
    2. 传递复杂对象
 
       1. Serializable    序列化，将一个对象转换为可存储或可传输状态
-         - 保存对象到本地文件、数据库、网络流；只需要实现Serializable接口；数据持久化保存；数据存储在磁盘或网络传输数据
+         1. Java序列化接口，使用简单但开销大，序列化正反过程需要很多IO操作
+         2. 保存对象到本地文件、数据库、网络流
+         3. 数据持久化保存；数据存储在磁盘或网络传输数据
       2. Parcelable    解包打包，将一个完整对象分解，每一部分都是Intent支持的基础类型
-         - 不同组件及不同程序间高效传输数据；需要自定义如何打包解包；性能更优；内存间数据传输
+         1. Android首选序列化方式，使用麻烦但效率高
+         2. 主要用于Android跨进程通信时对内存数据的序列化，跨进程传输数据必须序列化
+         3. 不同组件及不同程序间高效传输数据；需要自定义如何打包解包
       3. 优先选择Parcelable接口，有数据存储或网络传输需求再考虑Serializable接口
 
    3. 传递数据的风险
@@ -357,35 +488,140 @@
 
 > 一种嵌入在Activity中的UI片段，主要用于兼顾平板与手机不同屏幕尺寸的自适应性，也可用于减轻Activity，提高加载效率。
 
-#### 事件分发机制
+1. 添加Fragment
 
-1. 事件序列解析    `点击/滑动`
+   1. 静态添加Fragment
 
-   > MotionEvent/事件类型 - 具体操作
-   >
-   > ACTION_DOWN - 点下View
-   >
-   > ACTION_UP - 抬起View
-   >
-   > ACTION_MOVE - 滑动View
-   >
-   > ACTION_CANCEL - 非人为因素取消
-   >
-   > 事件序列的一般组成
-   >
-   > ​	点击： Down -> Up
-   >
-   > ​	滑动： Down -> Move -> Move -> Up
+      使用<fragment>标签在布局中静态添加，通过android:name显式声明要添加的全路径Fragment
 
-2. 事件分发
+      ``` xml
+      <!-- .xml布局文件中 -->
+      <fragment
+      	...
+          android:name="com.xxx.xxx.XxxFragment"/>
+      ```
 
-   1. 使用函数
-       1. dispatchTouchEvent    用于事件分发
-       2. onTouchEvent    消费事件
-       3. onInterceptTouchEvent    判断是否拦截事件，仅存在于ViewGroup
-    2. 分发对象    Activity、ViewGroup、View
+   2. 动态添加Fragment
+
+      通过调用`SupportFragmentManager`并开启事务的方式，将Fragment替换到R.id.xxx的容器内
+
+      ``` kotlin
+      supportFragmentManager.beginTransaction()
+      	.replace(R.id.xxx, XxxFragment)
+      	.commit()
+      ```
+
+2. 生命周期
+
+   不管Fragment直接载体是什么，其最终都将依赖于Activity，Fragment的生命周期受依赖Activity生命周期的影响。
+
+   `OnCreateView|onDestroyView`间的方法可能会执行N次，因为FragmentTransaction可以执行N次`remove|replace`操作先后加载不同Fragment。新加载的Fragment会取代之前的Fragment切换到前台，旧Fragment视图就会被销毁；若加载新Fragment的操作有添加到回退栈中，当返回时旧Fragment就重回前台，此时会重走`onCreateView -> onDestroyView`的流程。
+
+   1. onAttach()    与Activity建立关联时调用
+   2. onCreateView()    当Fragment创建视图(加载布局)时调用
+   3. onActivityCreated()    确保关联Activity创建完毕时调用
+   4. onDestroyView()    Fragment视图被移除时调用
+   5. onDetach() 与Activity解除关联时调用
+
+   ``` kotlin
+   supportFragmentManager.commit {
+       setReorderingAllowed(true)
+       addToBackStack(null)	// 本次操作添加到回退栈
+       repleace(R.id.xxx, FragmentNew())
+   }
+   ```
+
+   **FragmentTransaction 的回退栈中保留的是事务而非具体的 Fragment 实例，能响应返回事件的是我们向其中提交的事务，具体的响应结果就是将该事务撤销，恢复到之前的状态**
 
 ### 2.UI组件
+
+#### 触摸事件分发机制
+
+被分发的对象 -> 用户触摸屏幕产生的点击事件：按下、滑动、抬起、取消，被封装成MotionEvent对象
+
+1. 分发事件、触发场景及单次事件流中触发的次数
+
+   1. MotionEvent.ACTION_DOWN    在屏幕按下时   1次
+   2. MotionEvent.ACTION_MOVE    在屏幕上滑动时   0次或多次
+   3. MotionEvent.ACTION_UP    在屏幕上抬起时    0次或1次
+   4. MotionEvent.ACTION_CANCEL     滑动超出控件边界时    0次或1次
+
+   > 按下、滑动、抬起、取消几种事件组成一个事件流，以按下为开始，中间可能经过若干次滑动，以抬起/取消为结束。
+   >
+   > 安卓事件分发处理过程中，主要对按下事件作分发，进而找到能够处理按下事件的组件，对于后续事件则直接分发给能处理按下事件的组件。
+
+2. 分发事件的组件，包括Activity、View、View Group。三者的一般结构为：Activity包括了ViewGroup，ViewGroup又可以包含多个View。
+
+   ![](D:\Users\80350694\Desktop\文档输出\res\事件分发结构.png)
+
+   1. Activity    安卓视图类    MainActivty
+   2. ViewGroup    View的容器，可以包含若干View    各种布局类
+   3. View UI类组件的基类    按钮、文本框
+
+3. 分发的核心方法
+
+   `dispatchTouchEvent()|onTouchEvent()|onInterceptTouchEvent()`，在Activity/View中不存在`onInterceptTouchEvent()`方法。
+
+   1. `dispatchTouchEvent()`
+
+      首先交由子View的`dispatchTouchEvent`或`onTouch`处理，次之则交由自身`onTouchEvent`处理。
+
+   2. `ViewGroup.onInterceptTouchEvent()`
+
+      一般情况下该方法返回False即不拦截，若自定义ViewGroup希望拦截事件，不希望事件继续向子View传播，则重写该方法返回TRUE。
+
+   3. `onTouchEvent`
+
+      对事件进行处理，返回TRUE表示已处理，FALSE表示未处理需要继续传递事件。一般默认为FALSE。`View.onTouchEvent`中若设置了点击监听则调用其onClick方法。
+
+4. 事件分发过程
+
+   向下传播：Activity包括Layout，事件从Activity向Layout传播；Layout包含若干View，事件从Layout向子View传播。向上传播与之相反。
+
+   > 如果某组件的`dispatchTouchEvent()`返回了TRUE，则表示该组件已经对事件进行了处理，不用继续调用其余组件的分发方法，停止分发。如果某组件该方法返回FALSE，则表示该组件无法处理该事件，按照规则继续分发。不重写该方法的情况下，除部分特殊组件，其余组件默认返回False。
+
+   ``` java
+   /* Activity.dispatchTouchEvent()
+   事件传递给Activity后，先将事件分发给子View处理。若经过子View层层传递或处理后，事件被消费，则Activity.dispatchTouchEvent也返回True，表示事件被消费；如果事件未被消费，则调用自身onTouchEvent处理。如果onTouchEvent消费了事件则返回True，若没有则返回false并作为dispatch的返回值，使调用者明确Activity未消费事件，需要继续处理。
+   */
+   public boolean dispatchTouchEvent(MotionEvent ev) {
+       if(child.dispatchTouchEvent(ev)) {
+           return true;	// 子View消费了该事件，返回TRUE
+       } else {
+           return onTouchEvent(ev);	// 子View未消费该事件，调用自身onTouchEvent处理
+       }
+   }
+   /* ViewGroup.dispatchTouchEvent()
+   ViewGroup首先尝试onInterceptTouchEvent拦截事件，成功则由ViewGroup自身对象onTouchEvent消费事件，否则交由子View进行分发处理。
+   > ViewGroup中其实不存在onTouchEvent()，由于ViewGroup继承自View，因此ViewGroup对象调用View.onTouchEvent()。
+   > 实际onInterceptTouchEvent返回TRUE表示拦截时，调用super.dispatchTouchEvent(View)的方法，进而由该方法调用onTouchEvent
+   */
+   public boolean dispatchTouchEvent(MotionEvent ev) {
+       // 核心部分伪代码
+       if(!onInterceptTouchEvent(ev)) {
+           return child.dispatchTouchEvent;	// 不拦截，传递给子View进行分发处理
+       } else {
+           return onTouchEvent(ev);	// 拦截事件，交由自身对象onTouchEvent处理
+       }
+   }
+   /* View.dispatchTouchEvent()
+   在View.onTouchEvent中，如果设置了onClickListener监听对象，则会调用其onClick方法。
+   同时设置了onTouchListener和onClickListener对象时，OnTouchListener.onTouch优先级高于onClickListener.onClick
+   */  
+   public boolean dispatchTouchEvent(MotionEvent ev) {
+       if(mOnTouchListener != null && mOnTouchListener.onTouch(this, event)) {	// 如果该对象的监听成员变量不为空，则调用其onTouch方法
+           return true;	// 若onTouch返回TRUE，表示事件被消费
+       }
+       return onTouchEvent(ev);	// 调用自身onTouchEvent处理
+   }
+   ```
+
+   ![](D:\Users\80350694\Desktop\文档输出\res\事件分发U型图.png)
+
+5. 事件分发的主体思路
+
+   由父组件不断向子组件分发，若子组件能处理则立刻返回；若子组件都不处理，则传递到底层的子组件再向上层返回，类似递归过程。事件向下传播，类似于布局由外向内传播。
+
 
 #### ViewGroup
 
@@ -450,14 +686,11 @@ visibility: visible表示可见；invisible表示不可见，但任然占据位�
    }
    ```
 
-#### 常用组件
+7. RecyclerView
 
-1. RecyclerView
+   RecyclerView相对于ListView的扩展性提升源于对布局排列的管理
 
-   > ListView的扩展性较差、运行效率偏低，只能实现纵向滚动效果，无法横向滚动。
-   >
-   > RecyclerView相对于ListView的扩展性提升源于对布局排列的管理。ListView自身管理布局排列，而RecyclerView令LayoutManager代为管理。LayoutManager提供了一系列扩展接口比如GridLayoutManager网格布局、StaggeredGridLayoutManager瀑布流布局等，只需要实现相应接口就能定制不同布局。
-
+   > ListView的扩展性较差、运行效率偏低，只能实现纵向滚动效果，无法横向滚动。ListView自身管理布局排列，而RecyclerView令LayoutManager代为管理。LayoutManager提供了一系列扩展接口比如GridLayoutManager网格布局、StaggeredGridLayoutManager瀑布流布局等，只需要实现相应接口就能定制不同布局。
    1. 定制Adapter
 
       ``` kotlin
@@ -494,39 +727,442 @@ visibility: visible表示可见；invisible表示不可见，但任然占据位�
 
 #### 文件存储
 
-> 最基本的数据存储方式，不对存储内容进行任何格式化处理，适合存储简单的文本数据或二进制数据。若用此方式存储较复杂结构化数据，则需要自定义一套格式规范。
+最基本的数据存储方式，不对存储内容进行任何格式化处理，适合存储**简单的文本数据或二进制数据**。若用此方式存储较复杂结构化数据，则需要自定义一套格式规范。
 
-Context类提供了一个openFileOutput(fileName,MODE)方法用于将数据存储到指定文件中，操作模式有MODE_PRIVATE和MODE_APPEND两种，分别为覆盖和追加方式。[MODE_WORLD_READABLE和MODE_WORLD_WRITEABLE两种方式安全漏洞较大已废弃。]
+1. 使用方法：
 
-``` kotlin
-// 将数据存储到指定文件种
-String inputText = "xxxxxxxx"
-try{
-    val output = openFileOutput("data",Context.MODE_PRIVATE)	// openFileOutput返回FileOutputStream对象，使用JavaIO完成文件数据写入
-    val writer = BufferedWriter(OutputStreamWriter(output))	// 使用字符->字节转换流 获得一个带缓冲的字符输出流对象writer	
-    writer.use{	// 内置的扩展函数，调用者作为上下文，可直接使用it，会保证执行完毕后自动关闭外层流。
-        it.write(inputText)
-    }
-}catch( e: IOException){
-    e.printStackTrace()
-}
-```
+   1. `Context.openFileOutput(fileName,MODE)`，将数据存储到指定文件中，操作模式有MODE_PRIVATE和MODE_APPEND两种，分别为覆盖和追加方式。
+
+      ``` kotlin
+      String inputText = "xxxxxxxx"
+      try{
+          val output = openFileOutput("data", Context.MODE_PRIVATE)	// 返回FileOutputStream对象
+          val writer = BufferedWriter(OutputStreamWriter(output))	
+          writer.use{	// 扩展函数，调用者作为上下文，可直接使用it，保证执行完毕后自动关闭外层流。
+              it.write(inputText)
+          }
+      }catch( e: IOException){
+          e.printStackTrace()
+      }
+      ```
+
+   2. `Context.openFileInput(filename)`，从指定文件中读取数据。
+
+      ``` java
+      FileInputStream fis = null;
+      BufferedReader br = null;
+      StringBuilder sb = new StringBuilder();
+      try {
+      	fis = openFileInput("data");	// 返回FileInputStream对象
+          br = new BufferedReader(new InputStreamReader(fis));
+          String line = "";
+          while((line = br.readLine()) != null) {
+              sb.append(line);
+          }
+      } catch (Exception e) {
+          e.printStackTrace();
+      } finally {
+          if(br != null) {
+              try {
+                  br.close();
+              } catch (Exception e) {
+         			e.printStackTrace();
+      		}	
+          }
+      }
+      return sb.toString();
+      ```
 
 #### SharedPreference
 
-#### 数据库存储
+SharedPreferences使用**键值对方式**存储数据，只支持Java基本数据类型。不支持自定义数据类型，应用内数据共享，使用简单
 
-### 4.网络库与异步请求
+​	MODE_PRIVATE    默认操作模式，只有当前APP才可对该SP文件进行读写
+
+1. 三种获取SP对象的方法
+   1. Context.getSharedPreferences -> param1：文件名 param2：操作模式
+   2. Activity.getSharedPreferences -> 只接收一个操作模式参数，默认以当前Activity类名作为SP文件名
+   3. PreferenceManager.getDefaultSharedPreferences -> 只接收一个Context参数，默认以APP包名作为前缀命名SP文件
+
+2. 获取SP对象后存储数据
+   1. 调用`SP.edit()`获取一个`SharedPreferences.Editor`对象
+   2. 向`Editor`对象中添加数据`putXXX`
+   3. 调用`apply()`方法将添加的数据提交，完成数据存储
+
+``` java
+// SharedPreference.edit()每次都返回一个新Editor对象，实现类EditorImpl中有一个缓存Map，apply时先将缓存Map写入内存Map，再将内存Map写入XML文件。
+SharedPreferences.Editor editor = getSharedPreferences("data", MODE_PRIVATE).edit();
+editor.putString("name", "Tom");
+editor.putInt("age", 28);
+editor.putBoolean("married", false);
+editor.apply();
+```
+
+3. 从SP对象中读取数据
+
+   `SP.Editor`对象的`putXXX`方法对应有`getXXX(param1, param2)`方法，param1：Key，param2：若未找到对应值时的返回默认值
+
+``` java
+SharedPreferences sp = getSharedPreferences("data", MODE_PRIVATE);
+String name = sp.getString("name", "");
+int age = sp.getInt("age", 0);
+boolean married = sp.getBoolean("married", false);
+```
+
+### 4.网络请求
 
 #### Retrofit
 
-#### RxJava
+1. Retrofit的设计基于以下几点
 
-### 5.项目架构
+   1. 同一APP中大多数网络请求指向同一个服务器域名
+   2. 服务器接口常根据功能进行归类
+   3. 调用者并不需要关心网络具体通信细节
 
-#### MVC
+2. 特点
 
-#### MVP
+   1. Retrofit只需要配置好一个根路径，在指定服务器接口地址时只需要使用相对路径
+   2. 允许对服务器接口归类，同属一类的服务器接口定义到同一个接口文件中
+   3. 只需要在接口文件声明方法、返回值，通过注解方式指定对应服务器接口及相应参数，Retrofit将自动发起请求并解析数据为返回值类型，无需了解通信细节
+   4. 发起请求时Retrofit会自动开启子线程，数据回调至Callback后会自动切换回主线程
 
-#### MVVM
+3. 基本使用
 
+   ``` kotlin
+   interface AppService {
+       @GET("get_data.json")	// @GET注解表示GET请求，请求的相对地址为get_data.json
+       fun getAppData(): Call<List<App>>	// 返回值必须为Call类型，通过泛型指定响应数据的转换类
+   }
+   val retrofit = Retrofit.Builder()	// 使用建造者模式构建出retrofit对象
+   	.baseUrl("")	//指定网络请求根路径
+   	.addConverterFactory(GsonConverterFactory.create())	// 指定Retrofit解析数据使用的转换库
+   	.build()	
+   val appService = retrofit.create(AppService::class.java)	// 创建具体Service接口的动态代理对象
+   appService.getAppData().enqueue(object: Callback<List<App>> {	// 传入Callback匿名对象执行数据回调
+       override fun onResponse(call: Call<List<App>>) {
+       }
+       override fun onFailure(call: Call<List<App>>, t: Throwable) {
+       }
+   })
+   ```
+
+4. 注解类型
+
+   1. @Path()注解声明相对路径中的参数，自动替换到占位符位置	GET http://base_url/page/get_data.json
+
+      ``` kotlin
+      @GET("{page}/get_data.json")
+      fun getData(@Path("page") page: Int): Call<Data>
+      ```
+
+   2. @Query()注解声明键值对参数 GET http://base_url/get_data.json?u=xxx&t=xxx
+
+      ``` kotlin
+      @GET("get_data.json")
+      fun getData(@Query("u") user: String, @Query("t") token: String): Call<Data>
+      ```
+
+   3. 除@GET外，还提供了@POST|@PUT|@PATCH|@DELETE注解分别对应不同的HTTP请求
+
+      ResponseBody表示能够接受任意类型的响应数据且不会对数据进行解析，常用于不关心响应数据而是操作服务器数据的情况
+
+      ``` kotlin
+      @DELETE("data/{id}")
+      fun deleteData(@Path("id") id: String): Call<ResponseBody>
+      ```
+
+   4. @Body注解用于POST请求中的body部分，发出请求时自动将对象数据转换为JSON格式文本
+
+      ``` kotlin
+      @POST("data/create")
+      fun createData(@Body data: Data): Call<ResponseBody>
+      ```
+
+   5. @Headers注解用于指定header参数，但只用于静态声明；动态指定header需要使用@Header参数并作为方法参数
+
+      ``` kotlin
+      @Headers("User-Agent: okhttp", "Cache-Control: max-age=0")
+      @GET("get_data.json")
+      fun getData(): Call<Data>
+      fun getData(@Header("User-Agent") userAgent: String): Call<Data>
+      ```
+
+5. 单例Retrofit构建器
+
+   ``` kotlin
+   object ServiceCreator {
+       private const val BASE_URL = ""
+       private val retrofit = Retrofit.Builder()
+       	.baseUrl(BASE_URL)
+       	.addConverterFactory(GsonConverterFactory.create())
+       	.build()
+       fun <T> create(serviceClass: Class<T>): T = retrofit.create(serviceClass)
+   }
+   val appService = ServiceCreator.create(AppService::class.java)
+   ```
+
+### 5.Jetpack组件
+
+#### Lifecycle
+
+具有生命周期感知能力的组件，用于解决生命周期管理的一致性问题
+
+> 普通组件在使用过程中常需要依赖系统组件的生命周期，如在onCreate()中进行初始化，在onStop()中停止组件，或在onDestroy()中销毁。工作繁琐，存在大量生命周期维护的代码，且不及时释放资源可能导致内存泄漏；无法保证组件会在 Activity/Fragment 停止之前启动组件，从而导致内存泄漏。
+
+lifecycle组件管理不依赖页面的生命周期的回调方法，同时当页面生命周期改变时，能即时收到通知。
+
+1. Lifecycle有关对象
+
+   1. Lifecycle 持有组件生命周期状态与事件的信息的类
+   2. LifecycleOwner Lifecycle的提供者，通过实现LifecycleOwner接口访问Lifecycle生命周期对象
+   3. LifecycleObserver Lifecycle观察者，可使用`LifecycleOwner.addObserver()`注册，被注册后的Observer即可观察到Owner的生命周期事件
+
+2. 使用方法
+
+   ``` java
+   public class MyObserver implements LifecycleObserver {
+       @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
+       void onResume() {
+       }
+       @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+       void onPause() {
+       }
+   }
+   // onCreate()
+   getLifecycle().addObserver(new MyObserver());
+   // MyObserver通过注解@OnLifecycleEvent可观察Activity的生命周期变化
+   ```
+
+#### ViewModel
+
+以感知生命周期的形式存储和管理视图相关的数据
+
+1. ViewModel特点
+
+   1. Activity被销毁时，可使用`onSaveInstanceState()`恢复数据，但仅支持少量序列化、反序列化数据，不适用大量数据；ViewModel不仅支持大量数据，还不需要序列化、反序列化操作
+   2. Activity/Fragment主要用于显示视图数据，若负责DB或网络加载数据等操作，逻辑过多导致臃肿；ViewModel可以将视图数据相关逻辑和View分离开
+   3. ViewModel持有的数据支持在配置改变(如屏幕旋转)中存活
+   4. ViewModel在同一个Activity的Fragment间可共享数据
+
+2. ViewModelk的生命周期
+
+   ![](D:\Users\80350694\Desktop\文档输出\res\ViewModel生命周期.png)
+
+3. 创建方法
+
+   ``` kotlin
+   ViewModelProviders.of(this).get(MyViewModel::class.java)	// this指ViewModel绑定的系统组件上下文，如Activity、Fragment
+   ```
+
+#### LiveData
+
+可观察的数据持有对象，且拥有生命周期感知能力
+
+当数据更新后，LiveData通知其处于Active状态的观察者，若某观察者处于Paused、Destroyed状态则不会收到通知，因此不存在内存泄漏问题，当重新恢复到Resumed状态时会重新收到最新数据
+
+1. 主要方法
+
+   ``` java
+   observe(@NonNull LifecycleOwner owner, @NonNull Observer<? super T> observer);	// 添加观察者对该数据进行观察
+   setValue(T value);	// 设置数据
+   getValue(): T	// 获取数据
+   postValue(T value);	// 在主线程更新数据
+   ```
+
+2. 数据变化方法
+
+   1. `Transformations.map()`
+
+      期望在LiveData对象分发给观察者前修改其存储的数据
+
+      ``` java
+      MutableLiveData<String> mutableLiveData = new MutableLiveData<>();
+      LiveData transformedLiveData = Transformations.map(mutableLiveData, new Function<String, Object> {
+          @Override
+          public Object apply(String name) {
+              ...
+          }
+      });
+      transformedLiveData.observe(this, new Observer() {
+          @Override
+          public void onChanged(@Nullable Object o) {
+          	...
+          }
+      });
+      mutableLiveData.postValue("...");
+      ```
+
+   2. `Transformations.switchMap()`
+
+      想手动控制监听其中一个数据变化，且能随时切换监听，必须返回一个LiveData对象
+
+      ``` java
+      mutableLiveData1 = new MutableLiveData<>();
+      mutableLiveData2 = new MutableLiveData<>();
+      liveDataSwitch = new MutableLiveData<Boolean>();
+      LiveData transLiveData = Transformations.switchMap(liveDataSwitch, new Function<Boolean, LiveData<String>>() {
+          @Override
+          public LiveData<String> apply(Boolean input) {
+              if(input) {
+                  return mutableLiveData1;
+              } else {
+                  return mutableLiveData2;
+              }
+          }
+      })
+      ```
+
+### 6.项目架构
+
+#### MVC(Model - View - Controller)
+
+1. 分层职责
+   1. 模型层Model：负责数据的加载和存储
+   2. 视图层View：负责界面的展示
+   3. 控制层Controller：负责业务逻辑的处理
+
+2. 事件流向
+
+   View 产生**事件**，通知到Controller，Controller中进行一系列逻辑处理，之后通知Model去更新数据，Model更新数据后，再将**数据结构**通知给View更新界面。
+
+3. 缺点
+
+   1. 在Android中，因为xml布局能力很弱，View的很多操作是在Activity/Fragment中的，而**业务逻辑同样也是写在Activity/Fragment中**。
+   2. Activity/Fragment 责任不明，同时负责View、Controller，导致代码量大，不满足单一职责，逻辑混乱。
+   3. Model直接操作View，View的修改导致Controller、Model都需要相应改动
+
+#### MVP(Model - View - Presenter)
+
+MVP解决了MVC的问题：View责任明确，逻辑不再写在Activity中，而是在Presenter中；Model不再持有View。
+
+Android MVP本质是**面向接口编程，实现了依赖倒置**原则，Model与View无直接引用，一切通过Presenter中转，通常使用Contract接口包含IView、IPresenter子接口的方式进行管理
+
+1. 分层职责
+
+   1. 模型层Model：数据逻辑的处理
+   2. 视图层View：处理用户事件、渲染视图
+   3. 展示层Presenter：业务逻辑的处理
+   4. MVP中使用Bean表示数据模型，Model层用于从指定数据源中获取数据
+
+2. 事件流向
+
+   View产生**事件**，通知给Presenter，Presenter中进行*逻辑处理*后，通知Model更新数据，Model更新数据后，通知**数据结构**给Presenter，Presenter再通知 View更新界面。
+
+3. 实现思路
+
+   1. UI逻辑抽象成IView接口，由具体的Activity实现类来完成。且调用Presenter进行逻辑操作。
+   2. 业务逻辑抽象成IPresenter接口，由具体的Presenter实现类来完成。逻辑操作完成后调用IView接口方法刷新UI。
+
+4. 缺点
+
+   1. 引入大量的IView、IPresenter、IContract接口，增加实现的复杂度，项目文件数量过多。
+   2. Presenter除了应用逻辑外，存在大量手动同步逻辑，使类笨重，难以维护。
+   3. 解决了View层责任不明的问题，但并没有解决代码耦合的问题，View和Presenter之间相互持有。
+
+#### MVVM(Model - View - ViewModel)
+
+本质是**数据驱动**，把解耦做的更彻底，ViewModel不持有view 。
+
+1. 分层职责
+
+   1. View层：视图处理、响应事件
+   2. Model层：数据模型，用于获取和存储数据，**Repository仓库，包含本地持久数据和服务端数据**。
+   3. ViewModel层：业务逻辑的处理，Jetpack ViewModel + Jetpack LivaData
+
+2. 事件流向
+
+   View 产生**事件**，通知ViewModel进行*逻辑处理*，通知 Model *更新数据*，Model 更新数据后，通知**数据结构**给 ViewModel，ViewModel **自动**通知 View 更新界面。将Model与View进行关联，通过ViewModel从Model获取数据，使用DataBinding以观察者模式数据驱动进行View自动刷新。
+
+3. 实现思路
+
+   1. View层包含了我们平时写的Activity/Fragment/布局文件等与界面相关的东西。
+
+   2. ViewModel层用于持有和UI元素相关的数据，以保证这些数据在屏幕旋转时不会丢失，并且还要提供接口给View层调用以及和仓库层进行通信。
+   3. 仓库层的主要工作是判断调用方请求的数据应该是从本地数据源中获取还是从网络数据源中获取，并将获取到的数据返回给调用方。本地数据源可以使用数据库、SharedPreferences等持久化技术来实现，而网络数据源则通常使用Retrofit访问服务器提供的Webservice接口来实现。
+   4. 向外暴露的获取LiveData的方法应返回LiveData类型，即不可变的，而不是MutableLiveData，好处是避免数据在外部被更改。
+   5. ViewModel对象应该比更新的相应View对象存在的时间更长，因此ViewModel实现中不得包含对View对象的直接引用，包括Context。
+
+4. 优点
+
+   1. 低耦合，VIew独立于Model变化和修改
+   2. 可重用，一个ViewModel可以绑定到不同的View上
+
+### 7.其它
+
+#### Android ANR
+
+ANR(Application Not Responding)，监控应用、系统响应性的机制
+
+1. 监控线程工作原理
+
+   通过监控线程进行ANR工作，主线程进行耗时操作时首先向监控线程发送请求，监控线程检测状态后进入耗时检测
+
+   ![](D:\Users\80350694\Desktop\文档输出\res\ANR监控线程工作原理.png)
+
+2. ANR分类
+   1. 应用ANR	按键响应超时(5S)、广播处理超时(10S)、服务处理超时(20S)
+   2. 系统ANR    Watchdog超时(60S)
+3. ANR产生原因
+   1. 应用本身    耗时操作、死循环、线程阻塞、线程挂起
+   2. 其他进程    CPU被抢占
+4. ANR现场(日志)
+   1. apps/android.txt    出错进程、出错原因、CPU占用率
+   2. anr/traces.txt    堆栈信息
+
+5. ANR分析方法
+
+   1. 应用ANR分析方法
+
+      1. 查找ANR进程、原因信息
+      2. 检查CPU负载情况
+      3. 查看调用堆栈、分析代码
+
+      ![](D:\Users\80350694\Desktop\文档输出\res\应用ANR分析方法.png)
+
+   2. 系统ANR分析方法
+
+      1. 查找watchdog信息
+      2. 查看调用堆栈、分析代码
+
+      ![](D:\Users\80350694\Desktop\文档输出\res\系统ANR分析方法.png)
+
+6. 广播ANR分析
+
+   1. 应用广播ANR的三种判断状态
+
+      1. 收到通知 IN_ENQUEUEING = 1
+      2. 消息入队 IN_HANDLING=2
+      3. 消息处理 onReceive()
+      4. 处理完成 IN_FINISHING=3
+
+      广播超时ANR表示系统处理问题的状态为0、3
+
+   2. adb命令分析
+
+      1. 查看广播注册信息	adb shell dumpsys activity broadcasts
+      2. 分析广播处理流程的log，利用log判断广播分发流程，判断阻塞在系统端或应用端
+         1. adb shell dumpsys activity log broadcast 1 // 打开广播log
+         2. adb shell dumpsys activity log broadcast 0 // 关闭广播log
+
+7. ANR问题优化方向
+   1. 避免在主线程执行复杂耗时操作
+   2. 广播接收不进行复杂操作
+   3. 服务生命周期函数不进行复杂操作
+   4. 编码注意边界条件控制，避免死循环
+   5. 设计及编码阶段避免出现同步/死锁
+
+#### ADB
+
+Android Debug Bridge，连接手机与计算机，可在PC端控制手机的命令行工具
+
+1. 安装|卸载应用
+   1. `adb install <PC端APK所在路径>` 安装应用
+   2. `adb uninstall <应用包名>` 卸载应用，可在手机上直接操作
+
+2. 文件管理
+   1. `adb pull <remote> [local]` 手机文件复制到电脑，<remote>为设备里文件路径，[local]为计算机目录，可省略并默认复制到当前目录
+   2. `adb push [local] <remote>` 将计算机[local]目录文件拷贝到<remote>手机文件路径内
+   3. `adb shell cd <dir>` 切换路径
+   4. `adb shell mkdir [options] <dir_name>` 创建目录
+3. 日志打印
+   1. `adb shell logcat -b all > [local]` 自动抓取全部log并存放到计算机目录[local]中
