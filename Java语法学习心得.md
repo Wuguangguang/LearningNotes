@@ -424,3 +424,65 @@ Java泛型基本在编译器层次实现，生成的**字节码不包含泛型�
     list.add("a"); list.add("b");
     String[] array = list.toArray(new String[0]);
     ```
+
+### 9.正则表达式
+
+> 正则表达式定义了字符串的模式。
+>
+> 正则表达式可以用来搜索、编辑或处理文本。
+>
+> 正则表达式并不仅限于某一种语言，但是在每种语言中有细微的差别。
+
+java.util.regex包主要包括以下三个类：
+
+- **Pattern**
+
+  Pattern对象是一个正则表达式的编译表示
+
+- **Matcher**
+
+  Matcher对象是对输入字符串进行解释和匹配操作的引擎
+
+- **PatternSyntaxException**
+
+  PatternSyntaxException是一个非强制异常类，表示一个正则表达式模式中的语法错误
+
+``` java
+String content = "i am noob from runoob.com";
+String pattern = ".*runoob.*";	// 匹配包含了'runoob'的字符串
+boolean isMatch = Pattern.matches(pattern, content);
+```
+
+1. 捕获组
+
+   捕获组是把多个字符当一个单独单元进行处理的方法，它通过对括号内的字符分组来创建，从左至右计算其开括号来编号。
+
+   可以通过调用`Matcher.groupCount()`查看表达式有多少个分组。
+
+``` java
+String line = "This order was placed for QT3000! OK?";
+String pattern = "(\\D*)(\\d+)(.*)";
+// 创建 Pattern 对象
+Pattern r = Pattern.compile(pattern);
+// 创建 matcher 对象
+Matcher m = r.matcher(line);
+if (m.find( )) {
+    System.out.println("Found value: " + m.group(0) );
+    System.out.println("Found value: " + m.group(1) );
+    System.out.println("Found value: " + m.group(2) );
+    System.out.println("Found value: " + m.group(3) ); 
+} else {
+    System.out.println("NO MATCH");
+}
+/*
+Found value: This order was placed for QT3000! OK?
+Found value: This order was placed for QT
+Found value: 3000
+Found value: ! OK?
+*/
+```
+
+2. 正则表达式语法
+
+   Java 中正则表达式中则需要有两个反斜杠才能被解析为其他语言中的转义作用
+
