@@ -18,7 +18,7 @@ Android是**事件驱动**的程序，界面刷新、交互等都是事件，被
 
 #### Handler
 
-Handle 对外暴露，内部包含一个Looper，负责Message的发送和处理
+Handler 对外暴露，内部包含一个Looper，负责Message的发送和处理
 
 1. `Handler.enqueueMessage()`：将消息加入MessageQueue队列中
 
@@ -96,7 +96,7 @@ public void dispatchMessage(@NonNull Message msg) {
 
 1. `MessageQueue.enqueue(Message msg, long when)`方法：将msg加入消息队列中
    1. 获取队头消息mMessage
-   2. 队列为空|当前消息立即执行|当前消息执行时间早于Message -> 将当前消息放到队头
+   2. 队列为空|当前消息立即执行|当前消息执行时间早于队头Message -> 将当前消息放到队头
    3. 若以上均否定，则将其插入队列中间位置，通过遍历整个队列，当队列中某消息执行时间晚于当前消息，将当前消息插入到该消息前
 
 #### Looper
@@ -244,7 +244,10 @@ class LooperThread extends Thread {
 
 2. 主线程不执行耗时操作（ANR），在子线程执行耗时操作，使用Handler切换回主线程更新UI
 
-   > 只允许在UI线程(主线程)执行UI更新相关操作，使用**单线程模型处理UI操作**的原因：1. 加锁使UI访问复杂     2. 加锁降低UI访问效率
+   > 只允许在UI线程(主线程)执行UI更新相关操作，使用**单线程模型处理UI操作**的原因：
+   >
+   > 	1. 多线程操作需要加锁，使UI访问复杂     
+   >  	2. 多线程操作加锁降低UI访问效率
 
 #### 基本用法
 

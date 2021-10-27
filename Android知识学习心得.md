@@ -723,6 +723,43 @@ visibility: visible表示可见；invisible表示不可见，但任然占据位�
       }
       ```
 
+#### ViewStub|Include|Merge
+
+1. ViewStub
+
+   布局优化的方式之一，适用于延迟加载场景
+
+   相较于`View.GONE`，更加轻量级，本身是一个不可见不占用位置的View，资源消耗比较小
+
+   只有调用了`ViewStub.inflate()`时才加载布局实例化，加载后ViewStub会被替代为实际的布局，因此，ViewStub 一直存在于视图层次结构中直到调用了 `setVisibility(int)` 或 `inflate()`。
+
+   注意事项：
+
+   1. ViewStub只能inflate一次，之后ViewStub对象将被置空，它所占用的空间就会被新的布局替换
+   2. ViewStub只能用来inflate一个布局文件，而非某个具体的View
+   3. 控制显隐的目标是布局文件，而非某个View
+   4. ViewStub的属性会在inflate后传递给其相应的布局
+
+2. Include
+
+   公共布局复用，若一个xml多处被使用，可抽取为单独的xml布局
+
+   复杂布局结构更清晰，若界面复杂可将一个xml布局拆分为多个子xml布局，使用include引用，使结构更清晰
+
+3. merge
+
+   减少布局层次，加快视图的绘制，提高UI性能
+
+   merge标签内含控件设置属性与merge外部ViewGroup控件提供的属性对应
+
+   merge的子元素会直接替换include标签，可减少一层布局
+
+   注意事项：
+
+   1. merge必须在布局文件根节点上
+   2. merge不是ViewGroup|View，相当于声明了一些视图等待被添加
+   3. 对merge标签设置的所有属性都是无效的
+
 ### 3.数据存储与持久化
 
 #### 文件存储
@@ -1166,3 +1203,156 @@ Android Debug Bridge，连接手机与计算机，可在PC端控制手机的命�
    4. `adb shell mkdir [options] <dir_name>` 创建目录
 3. 日志打印
    1. `adb shell logcat -b all > [local]` 自动抓取全部log并存放到计算机目录[local]中
+
+### 8.Notification
+
+每个 app 可以自定义通知的样式和内容等，它会显示在系统的通知栏等区域。用户可以打开抽屉式通知栏查看通知的详细信息。在实际生活中，Android Notification 机制有很广泛的应用，例如 IM app 的新消息通知，资讯 app 的新闻推送等等。
+
+####  基本使用
+
+1. `NotificationManager`
+
+   对通知进行管理，通过`Context.getSystemService()`获取到`NotificationManger`对象。
+
+   ``` java
+   NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+   ```
+
+2. `NotificationCompat.Builder`
+
+   为解决API不稳定性|新老版本兼容的问题，使用`NotificationCompat.Builder`构造器创建`Notification`对象，Android8.0之后还需要传入ChannelId。
+
+   ``` java
+   //创建Notification，传入Context和channelId
+   Notification notification = new NotificationCompat.Builder(this, "channelId")
+       .xxxxx()
+       .build();
+   ```
+
+3. `Builder.setPriority()`
+
+   通过设置`NotificationConfig`中提供的常量值，给定通知重要程度。
+
+   - PRIORITY_DEFAULT：表示默认重要程度，和不设置效果一样
+   - PRIORITY_MIN：表示最低的重要程度。系统只会在用户下拉状态栏的时候才会显示
+   - PRIORITY_LOW：表示较低的重要性，系统会将这类通知缩小，或者改变显示的顺序，将排在更重要的通知之后。
+   - PRIORITY_HIGH：表示较高的重要程度，系统可能会将这类通知方法，或改变显示顺序，比较靠前
+   - PRIORITY_MAX：最重要的程度， 会弹出一个单独消息框，让用户做出响应。
+
+4. `NotificationManger.notify(int notifyId, Notification notification)`
+
+   使用该方法显示该通知，NOTIFY_ID需要全局唯一，否则同ID的新通知将覆盖旧通知。Android8.0后需要在此之前先为`NotifactionManager`创建`NotificationChannel`
+
+   ``` java
+   notificationManger.notify(1, notification);
+   ```
+
+5. 让通知从状态栏消失
+
+   1. `Builder().setAutoCancel(true)`    点击后自动消失
+   2. `notificationManger.cancel(int notifyId)`    在跳转后的目标Activity中动态取消
+
+#### NotificationChannel
+
+从避免垃圾推送消息的角度出发，Android 8.0系统开始，Google引入了通知渠道这个概念。**每条通知都要属于一个对应的渠道**。每个App都可以自由地创建当前App拥有哪些通知渠道，但是这些**通知渠道的控制权都是掌握在用户手上**的。用户可以自由地选择这些通知渠道的重要程度，是否响铃、是否振动、或者是否要关闭这个渠道的通知。
+
+>我希望可以即时收到支付宝的收款信息，因为我不想错过任何一笔收益，但是我又不想收到支付宝给我推荐的周围美食，因为我没钱只吃得起公司食堂。这种情况，支付宝就可以创建两种通知渠道，一个收支，一个推荐，而我作为用户对推荐类的通知不感兴趣，那么我就可以直接将推荐通知渠道关闭，这样既不影响我关心的通知，又不会让那些我不关心的通知来打扰我了。
+
+通知渠道一旦创建之后就不能再修改
+
+1. 创建`NotificationChannel`
+
+   ``` java
+   //创建通知渠道ID
+   String channelId = "musicNotification";
+   //创建通知渠道名称
+   String channelName = "音乐播放器通知栏";
+   //创建通知渠道重要性
+   int importance = NotificationManager.IMPORTANCE_DEFAULT;
+   NotificationChannel channel = new NotificationChannel(channelId, channelName, importance);
+   //为NotificationManager设置通知渠道
+   notificationManager.createNotificationChannel(channel);
+   ```
+
+2. 重要程度
+
+   数值越高，提示权限就越高，最高的支持发出声音和悬浮通知
+
+   ``` java
+   public class NotificationManager {
+       public static final int IMPORTANCE_NONE = 0;
+       public static final int IMPORTANCE_MIN = 1;
+       public static final int IMPORTANCE_LOW = 2;
+       public static final int IMPORTANCE_DEFAULT = 3;
+       public static final int IMPORTANCE_HIGH = 4;
+       public static final int IMPORTANCE_MAX = 5;
+       public static final int IMPORTANCE_UNSPECIFIED = -1000;
+   }
+   ```
+
+3. 删除`NotificationChannel`
+
+   ``` java
+   notificationManager.deleteNofiticationChannel(int chatChannelId);
+   ```
+
+#### PendingIntent
+
+使用`PendingIntent`进行通知点击跳转功能。
+
+1. Intent|PendingIntent
+
+   PendingIntent可以看做是对Intent的包装，通过名称可以看出**PendingIntent用于处理即将发生的意图，而Intent用来用来处理马上发生的意图**。可以将PendingIntent看做是延迟执行的Intent。
+
+2. 创建PendingIntent
+
+   ``` java
+   PendingIntent.getBroadcast(context, requestCode, intent, flags) 
+   PendingIntent.getService(context, requestCode, intent, flags) 
+   PendingIntent.getActivity(context, requestCode, intent, flags) 
+   PendingIntent.getActivities(context, requestCode, intent, flags) 
+    /*
+   其中flags属性参数用于确定PendingIntent的行为，常传0： 
+   FLAG_ONE_SHOT： 表示返回的PendingIntent仅能执行一次，执行完后自动消失 
+   FLAG_NO_CREATE： 表示如果描述的PendingIntent不存在，并不创建相应的PendingIntent，而是返回NULL 
+   FLAG_CANCEL_CURRENT： 表示相应的PendingIntent已经存在，则取消前者，然后创建新的PendingIntent 
+   FLAG_UPDATE_CURRENT： 表示更新的PendingIntent，如果构建的PendingIntent已经存在，则替换它，常用。
+   FLAG_IMMUTABLE： 设置Intent在send的时候不能更改
+   */
+   ```
+
+   获取到PendingIntent实例后，通过`Builder().setContentIntent(PendingIntent intent)`方法，构建一个PendingIntent。
+
+#### 完整实例
+
+``` java
+Notification notification;
+NotificationManager manager;
+private final static int NOTIFY_ID = 100;
+private void showNotification() {
+    manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+    Intent hangIntent = new Intent(this, MainActivity.class);
+
+    PendingIntent hangPendingIntent = PendingIntent.getActivity(this, 1001, hangIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+    String CHANNEL_ID = "your_custom_id";//应用频道Id唯一值， 长度若太长可能会被截断，
+    String CHANNEL_NAME = "your_custom_name";//最长40个字符，太长会被截断
+    //Android 8.0 以上需包添加渠道
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        NotificationChannel notificationChannel = new NotificationChannel(CHANNEL_ID,
+        	CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW);
+        manager.createNotificationChannel(notificationChannel);
+    }
+    notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+    .setContentTitle("这是一个猫头")
+    .setContentText("点我返回应用")
+    .setWhen(System.currentTimeMillis())	//设置通知被创建的时间
+    .setSmallIcon(R.mipmap.ic_launcher)
+    .setContentIntent(hangPendingIntent)	//点击通知时发送的intent
+    .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.head))
+    .setAutoCancel(true)	//点击通知后自动清除该通知
+    .build();
+    manager.notify(NOTIFY_ID, notification);
+}
+```
+
