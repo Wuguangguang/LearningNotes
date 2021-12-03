@@ -2,19 +2,19 @@
 
 Android动画：属性动画 & 视图动画( 补间动画 & 逐帧动画)
 
-#### 视图动画
+#### 视图动画ViewAnimation
 
 ​	作用对象：视图View
 
-##### 1.补间动画
+##### 1.补间动画TweenAnimation
 
 ​	确定开始|结束的视图样式，中间动画变化过程由系统补全
 
-1. 视图样式：平移Translation、缩放Scale、旋转Rotation、透明度Alpha
+1. 视图样式：平移Translate、缩放Scale、旋转Rotate、透明度Alpha
 2. 特点：使用简单方便，已封装好基础动画效果 | 仅控制整体实现效果，无法控制属性
 3. 应用场景：视图中标准、基础的动画效果 | Activity、Fragment的切换效果 | 视图组中子元素的出场效果
 
-##### 2.逐帧动画
+##### 2.逐帧动画FrameAnimation
 
 ​	将动画拆分为帧的形式，且定义每一帧=每一张图片，按顺序播放一组预先定义好的图片
 
@@ -28,7 +28,7 @@ Android动画：属性动画 & 视图动画( 补间动画 & 逐帧动画)
 2. 只改变View的视觉效果，不能改变View的属性
 3. 动画效果单一，只能实现简单动画需求，复杂动画效果难以实现
 
-#### 属性动画 
+#### 属性动画PropertyAnimation
 
 Android3.0后提供的全新动画模式，定义一个随时间更改任何对象属性的动画，无论其是否绘制到屏幕上
 
@@ -211,3 +211,13 @@ btnStart.setOnClickListener {
 3. 兼容性：属性动画在API11后引入
 4. 屏幕适配：避免使用px，否则导致动画效果在不同设备上不相同
 5. 与动画元素交互：视图动画不改变属性，属性动画改变属性，注意交互位置区域
+
+#### 区别
+
+1. Animation | Animator
+   - Animation 是针对视图外观的动画实现，动画被应用时外观改变但视图的触发点不会发生变化，还是在原来定义的位置。 (也就是作用于视图动画)
+   - Animator  是针对视图属性的动画实现，动画被应用时对象属性产生变化，最终导致视图外观变化。（也就是作用于属性动画）
+2. AnimatorSet | PropertyValuesHolder
+   - AnimatorSet可以将作用于多个view多个属性的动画集合起来，而PropertyValuesHolder针对同一个对象多个属性。
+   - AnimatorSet多了playTogether（同时执行）、playSequentially（顺序执行）、play().with()、before、after这些方法协同工作。
+
